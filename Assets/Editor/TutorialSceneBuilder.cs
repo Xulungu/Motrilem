@@ -14,7 +14,7 @@ using UnityEngine.Tilemaps;
 // Menu Motrilem > Tout (re)construire. À l'ouverture du projet, Unity propose de le faire si besoin.
 public static partial class TutorialSceneBuilder
 {
-    const int Version = 7;
+    const int Version = 8;
     const string VersionKey = "Motrilem.BuilderVersion";
 
     const string MenuScene = "Assets/Scenes/Menu.unity";
@@ -569,6 +569,17 @@ public static partial class TutorialSceneBuilder
         AddCheckpoint(parent, 158f, 0);
         AddCheckpoint(parent, 198f, 0);
 
+        // --- Panneaux en bois : leur bulle n'apparaît que quand on passe devant
+        AddSign(parent, 5, "Q / D ou ← / → : se déplacer");
+        AddSign(parent, 17, "Espace : sauter\n(maintiens pour sauter plus haut)");
+        AddSign(parent, 30, "Plus tu cours longtemps, plus tu vas vite.\nPrends de l'élan !");
+        AddSign(parent, 62, "Retombe sur la tête des ennemis pour les écraser.\nTouche leur corps et tu seras blessé !");
+        AddSign(parent, 91, "Approche-toi du livre et appuie sur E.");
+        AddSign(parent, 115, "J, K ou clic gauche : lancer un sort\nZ / S (+ Q / D) pour viser en haut, en bas ou en diagonale.\nCes cristaux bloquent le passage : détruis-les !");
+        AddSign(parent, 132, "S ou ↓ : descendre à travers les planches");
+        AddSign(parent, 159, "Attention aux moustiques piqueurs (rouges) !\nQuand ils tremblent, ils vont lancer leur trompe :\nesquive, puis riposte.");
+        AddSign(parent, 199, "La sortie ! Appuie sur E pour ouvrir la porte.");
+
         AddFallZone(parent, 44.75f, -7f, 15f);
     }
 
@@ -582,6 +593,17 @@ public static partial class TutorialSceneBuilder
         box.size = new Vector2(x1 - x0, 8f);
         box.offset = new Vector2(0f, -1f);
         go.AddComponent<TutorialHint>().message = message;
+    }
+
+    static void AddSign(GameObject parent, int tileX, string message)
+    {
+        GameObject go = new GameObject("Panneau");
+        go.transform.SetParent(parent.transform, false);
+        go.transform.position = new Vector3(tileX + 0.5f, FloorAt(tileX) + 1f, 0f);
+        BoxCollider2D box = go.AddComponent<BoxCollider2D>();
+        box.isTrigger = true;
+        box.size = new Vector2(4f, 4f);
+        go.AddComponent<SignPost>().message = message;
     }
 
     static void AddCheckpoint(GameObject parent, float x, int floor)

@@ -1,0 +1,32 @@
+# Unity (généré, ne pas versionner)
+/[Ll]ibrary/
+/[Tt]emp/
+/[Oo]bj/
+/[Bb]uilds/
+/[Ll]ogs/
+/[Uu]ser[Ss]ettings/
+/[Mm]emoryCaptures/
+
+# Sauvegardes locales et dossier de travail
+/_sauvegardes/
+/outputs/
+
+# IDE / système
+.vs/
+.idea/
+.vscode/
+*.csproj
+*.unityproj
+*.sln
+*.suo
+*.user
+*.userprefs
+*.pidb
+*.booproj
+.DS_Store
+Thumbs.db
+*.pdb
+*.mdb
+*.apk
+*.unitypackage
+sysinfo.txt
