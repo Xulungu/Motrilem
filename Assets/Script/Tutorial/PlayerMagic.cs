@@ -8,6 +8,7 @@ public class PlayerMagic : MonoBehaviour
     public const string SaveKey = "Motrilem.Magie";
 
     public MagicType magic = MagicType.Aucune;
+    public MagicType secondMagic = MagicType.Aucune;
     [Tooltip("Recharger l'affinité sauvegardée au démarrage (désactivé dans le tutoriel, qui repart de zéro)")]
     public bool loadSavedMagic = true;
 
@@ -26,8 +27,41 @@ public class PlayerMagic : MonoBehaviour
         // La partie en cours fait foi ; sinon (scène lancée directement dans l'éditeur) on lit la dernière magie choisie
         if (SaveSystem.Session.magic != 0) magic = (MagicType)SaveSystem.Session.magic;
         else if (loadSavedMagic) magic = (MagicType)PlayerPrefs.GetInt(SaveKey, 0);
+        secondMagic = (MagicType)SaveSystem.Session.magic2;
         auraStrength = magic == MagicType.Aucune ? 0f : 1f;
         UpdateAura();
+    }
+
+    public bool HasTwoMagics { get { return secondMagic != MagicType.Aucune && magic != MagicType.Aucune; } }
+
+    public void SetSecondMagic(MagicType type)
+    {
+        secondMagic = type;
+        SaveSystem.Session.magic2 = (int)type;
+    }
+
+    /// <summary>Échange la magie active et la seconde.</summary>
+    public void SwitchMagic()
+    {
+        if (!HasTwoMagics) return;
+        MagicType old = magic;
+        SetMagic(secondMagic);
+        secondMagic = old;
+        SaveSystem.Session.magic2 = (int)old;
+    }
+
+    void LateUpdate()
+    {
+        if (GameInput.SwitchMagicDown() && HasTwoMagics)
+        {
+            PlayerMovement pm = GetComponent<PlayerMovement>();
+            if (pm != null && (!pm.controlsEnabled || pm.externalControl)) return;
+            SwitchMagic();
+            AudioManager.Play("menu_deplacer", 0.7f, 1.4f);
+            Sprite glow = FxUtil.LoadSprite("lueur_douce");
+            if (glow != null)
+                SimpleParticle.Spawn(glow, transform.position + Vector3.up * 0.3f, Vector2.zero, 0.35f, ColorOf(magic), 2.2f, 10003, FxUtil.Additive);
+        }
     }
 
     public void SetMagic(MagicType type)

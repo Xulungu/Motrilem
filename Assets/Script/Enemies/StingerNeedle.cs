@@ -182,6 +182,7 @@ public class StingerNeedle : MonoBehaviour
         }
 
         if (other.isTrigger) return; // zones, ennemis, points faibles...
+        if (other.usedByEffector && other.GetComponent<PlatformEffector2D>() != null) return; // les planches ne bloquent pas la trompe
         if (other.GetComponentInParent<EnemyHealth>() != null) return;
 
         // Mur ou sol : la trompe se plante

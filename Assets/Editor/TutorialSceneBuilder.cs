@@ -14,7 +14,7 @@ using UnityEngine.Tilemaps;
 // Menu Motrilem > Tout (re)construire. À l'ouverture du projet, Unity propose de le faire si besoin.
 public static partial class TutorialSceneBuilder
 {
-    const int Version = 8;
+    const int Version = 13;
     const string VersionKey = "Motrilem.BuilderVersion";
 
     const string MenuScene = "Assets/Scenes/Menu.unity";
@@ -72,7 +72,7 @@ public static partial class TutorialSceneBuilder
         List<string> scenes = new List<string>();
         foreach (EditorBuildSettingsScene sc in EditorBuildSettings.scenes) if (sc.enabled) scenes.Add(sc.path);
 
-        string folder = Path.GetFullPath(Path.Combine(Application.dataPath, "../Build"));
+        string folder = Path.GetFullPath(Path.Combine(Application.dataPath, "..")); // le .exe est à la racine du projet
         Directory.CreateDirectory(folder);
         BuildPlayerOptions options = new BuildPlayerOptions();
         options.scenes = scenes.ToArray();
@@ -84,7 +84,7 @@ public static partial class TutorialSceneBuilder
         if (report.summary.result == BuildResult.Succeeded)
         {
             EditorUtility.DisplayDialog("Motrilem",
-                "Le jeu est prêt !\n\n" + options.locationPathName + "\n\nPour le partager, envoie tout le dossier « Build » (le .exe a besoin des fichiers à côté de lui).",
+                "Le jeu est prêt !\n\n" + options.locationPathName + "\n\nPour le partager, envoie le .exe avec UnityPlayer.dll, UnityCrashHandler64.exe et les dossiers Motrilem_Data et MonoBleedingEdge (il a besoin des fichiers à côté de lui).",
                 "Ouvrir le dossier");
             EditorUtility.RevealInFinder(options.locationPathName);
         }
@@ -119,7 +119,7 @@ public static partial class TutorialSceneBuilder
             if (SessionState.GetBool("Motrilem.Proposed", false)) return;
             SessionState.SetBool("Motrilem.Proposed", true);
             if (EditorUtility.DisplayDialog("Motrilem",
-                    "Nouvelle version des scènes disponible :\n• décors corrigés (fond des cavernes, bassins d'acide)\n• plus de messages d'aide à l'écran\n\nLes (re)construire maintenant ?\n(Possible plus tard via le menu Motrilem.)",
+                    "Nouvelle version des scènes disponible :\n• le Marécage Acide entièrement refait (27 salles, 5 régions, raccourcis, secrets)\n• le donjon et le combat contre le moustique géant\n\nLes (re)construire maintenant ?\n(Possible plus tard via le menu Motrilem.)",
                     "Construire", "Plus tard"))
             {
                 if (EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) BuildAll();
@@ -138,6 +138,8 @@ public static partial class TutorialSceneBuilder
             BuildTutorial();
             EditorUtility.DisplayProgressBar("Motrilem", "L'Étang Acide...", 0.75f);
             BuildPond();
+            EditorUtility.DisplayProgressBar("Motrilem", "Le donjon du gardien...", 0.82f);
+            BuildDungeon();
             EditorUtility.DisplayProgressBar("Motrilem", "Menu d'accueil...", 0.9f);
             BuildMenu();
             AddToBuildSettings();
@@ -200,7 +202,7 @@ public static partial class TutorialSceneBuilder
             ti.textureCompression = TextureImporterCompression.Uncompressed;
             ti.mipmapEnabled = false;
             ti.alphaIsTransparency = true;
-            bool repeat = tiledBackground || file == "cristal" || file.StartsWith("acide");
+            bool repeat = tiledBackground || file == "cristal" || file.StartsWith("acide") || file.StartsWith("tuile_");
             ti.wrapMode = repeat ? TextureWrapMode.Repeat : TextureWrapMode.Clamp;
             // Les sprites répétés (mode "Tiled") ont besoin d'un maillage rectangulaire complet
             TextureImporterSettings settings = new TextureImporterSettings();
@@ -469,6 +471,7 @@ public static partial class TutorialSceneBuilder
     // ================================================================== grotte : construction
     static void BuildTutorial()
     {
+        buildingTutorial = true;
         Scene scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
         BuildTiles();
 
@@ -525,6 +528,8 @@ public static partial class TutorialSceneBuilder
         GameObject player = (GameObject)PrefabUtility.InstantiatePrefab(playerPrefab);
         player.name = "Player";
         player.transform.position = position;
+        // Le personnage était trop grand pour les passages : on le ramène à une taille cohérente avec les cases (≈ 0,85 case de haut)
+        player.transform.localScale = new Vector3(1.02f, 1.01f, 1f);
         PrefabUtility.RecordPrefabInstancePropertyModifications(player.transform);
 
         PlayerMagic magic = player.GetComponent<PlayerMagic>();
@@ -534,7 +539,17 @@ public static partial class TutorialSceneBuilder
         magic.auraSprite = Art("lueur");
         magic.auraMaterial = additive;
         PrefabUtility.RecordPrefabInstancePropertyModifications(magic);
+        if (player.GetComponent<FallImpact>() == null) player.AddComponent<FallImpact>();
         return player;
+    }
+
+    // Après une chute dans l'acide ou le vide : retour sur le dernier sol sûr (et non au début de la zone)
+    static void EnableSafeRespawn(GameObject player)
+    {
+        PlayerHealth ph = player.GetComponent<PlayerHealth>();
+        if (ph == null) return;
+        ph.safeGroundRespawn = true;
+        PrefabUtility.RecordPrefabInstancePropertyModifications(ph);
     }
 
     static void PlaceCamera(GameObject player, Color background)
@@ -573,7 +588,7 @@ public static partial class TutorialSceneBuilder
         AddSign(parent, 5, "Q / D ou ← / → : se déplacer");
         AddSign(parent, 17, "Espace : sauter\n(maintiens pour sauter plus haut)");
         AddSign(parent, 30, "Plus tu cours longtemps, plus tu vas vite.\nPrends de l'élan !");
-        AddSign(parent, 62, "Retombe sur la tête des ennemis pour les écraser.\nTouche leur corps et tu seras blessé !");
+        AddSign(parent, 62, "Retombe sur la tête des ennemis pour les blesser et rebondir.\nTouche leur corps et tu seras blessé !");
         AddSign(parent, 91, "Approche-toi du livre et appuie sur E.");
         AddSign(parent, 115, "J, K ou clic gauche : lancer un sort\nZ / S (+ Q / D) pour viser en haut, en bas ou en diagonale.\nCes cristaux bloquent le passage : détruis-les !");
         AddSign(parent, 132, "S ou ↓ : descendre à travers les planches");
@@ -630,6 +645,14 @@ public static partial class TutorialSceneBuilder
     }
 
     // ------------------------------------------------------------------ ennemis
+    // Points de vie des moustiques : l'écrasement ne tue plus d'un coup, il faut aussi utiliser la magie
+    static bool buildingTutorial;
+    static int MosquitoHp(bool stinger, float x)
+    {
+        if (buildingTutorial) return x < 100f ? 2 : (stinger ? 5 : 4);   // avant la magie : deux écrasements suffisent
+        return stinger ? 8 : 6;
+    }
+
     static void PlaceMosquito(string name, Vector2 start, Vector2[] points, float speed, bool stinger)
     {
         if (mosquitoPrefab == null) return;
@@ -657,7 +680,7 @@ public static partial class TutorialSceneBuilder
         {
             patrol.speed = speed;
             patrol.waypoints = wps.ToArray();
-            patrol.health = stinger ? 4 : 3;
+            patrol.health = MosquitoHp(stinger, start.x);
         }
         if (stinger)
         {
@@ -977,7 +1000,7 @@ public static partial class TutorialSceneBuilder
     static void AddToBuildSettings()
     {
         List<EditorBuildSettingsScene> list = new List<EditorBuildSettingsScene>();
-        string[] order = { MenuScene, TutorialScene, PondScene, MainScene };
+        string[] order = { MenuScene, TutorialScene, PondScene, DungeonScene, MainScene };
         foreach (string p in order)
             if (File.Exists(p)) list.Add(new EditorBuildSettingsScene(p, true));
         foreach (EditorBuildSettingsScene s in EditorBuildSettings.scenes)

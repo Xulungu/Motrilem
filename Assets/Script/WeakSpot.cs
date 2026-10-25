@@ -1,12 +1,17 @@
 using UnityEngine;
 
-// Point faible sur le dessus de l'ennemi : le joueur qui RETOMBE dessus le tue et rebondit.
+// Point faible sur le dessus de l'ennemi : le joueur qui RETOMBE dessus lui fait un petit dégât et rebondit.
+// (La magie reste bien plus efficace : écraser ne tue plus d'un coup.)
 // La zone est volontairement petite : il faut viser le centre de la tête.
 public class WeakSpot : MonoBehaviour
 {
     public GameObject objectToDestroy;
     [Tooltip("Vitesse verticale donnée au joueur quand il rebondit sur l'ennemi")]
     public float bounceVelocity = 6f;
+    [Tooltip("Dégâts infligés par un écrasement")]
+    public int stompDamage = 1;
+    [Tooltip("Délai avant de pouvoir être écrasé à nouveau")]
+    public float cooldown = 0.6f;
 
     [Header("Zone de la tête (appliquée au démarrage)")]
     public bool overrideHitbox = true;
@@ -17,7 +22,8 @@ public class WeakSpot : MonoBehaviour
     [Tooltip("Écart horizontal maximal entre le centre du joueur et la tête")]
     public float maxHorizontalOffset = 0.32f;
 
-    private bool killed;
+    private float nextStomp;
+    public bool RecentlyStomped { get { return Time.time < nextStomp; } }
 
     void Awake()
     {
@@ -43,21 +49,21 @@ public class WeakSpot : MonoBehaviour
 
     void TryStomp(Collider2D collision)
     {
-        if (killed || !collision.CompareTag("Player")) return;
+        if (Time.time < nextStomp || !collision.CompareTag("Player")) return;
 
         Rigidbody2D playerRb = collision.attachedRigidbody;
         if (!CanStomp(playerRb)) return;
 
-        killed = true;
+        nextStomp = Time.time + cooldown;
 
         PlayerMovement movement = collision.GetComponentInParent<PlayerMovement>();
         if (movement != null) movement.Bounce(bounceVelocity);
 
         EnemyHealth health = GetComponentInParent<EnemyHealth>();
-        if (health != null) health.Kill(true);
+        if (health != null) health.StompHit(stompDamage);
         else
         {
-            AudioManager.Play("ecrase", 0.6f);
+            AudioManager.Play("ecrase", 0.6f, 1f);
             Destroy(objectToDestroy);
         }
     }

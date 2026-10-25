@@ -33,6 +33,9 @@ public class EnemyDamage : MonoBehaviour
         PlayerHealth health = collision.GetComponentInParent<PlayerHealth>();
         if (health == null || !health.CanTakeDamage) return;
 
+        // Juste après un écrasement, le joueur remonte : l'ennemi ne le blesse pas
+        if (weakSpot != null && weakSpot.RecentlyStomped) return;
+
         // Pas de dégâts seulement si le joueur est en train de retomber pile sur le point faible
         Rigidbody2D playerRb = collision.attachedRigidbody;
         if (weakSpotCollider != null && weakSpotCollider.enabled && playerRb != null &&

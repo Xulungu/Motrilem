@@ -20,6 +20,13 @@ public class PlayerHealth : MonoBehaviour
 
     [HideInInspector] public bool invulnerable; // pendant les cinématiques
 
+    [Header("Chute dans l'acide ou le vide")]
+    [Tooltip("Vrai : on réapparaît sur le dernier sol sûr (loin de l'acide) au lieu du dernier checkpoint")]
+    public bool safeGroundRespawn;
+    private Vector3 safePos;
+    private bool hasSafe;
+    private float groundedTime;
+
     private bool isInvincible;
     private bool isDead;
     private Vector3 spawnPosition;
@@ -44,6 +51,25 @@ public class PlayerHealth : MonoBehaviour
 
         if (healthBar == null) healthBar = HealthBar.CreateDefault();
         healthBar.SetMaxHealth(maxHealth);
+    }
+
+    void Update()
+    {
+        if (!safeGroundRespawn || isDead || movement == null || rb == null) return;
+        if (movement.isGrounded && Mathf.Abs(rb.velocity.y) < 0.1f)
+        {
+            groundedTime += Time.deltaTime;
+            if (groundedTime > 0.3f && !AcidPool.NearAcid(transform.position, 2.2f))
+            {
+                Collider2D g = movement.GroundCollider;
+                if (g == null || (g.GetComponentInParent<LilyPad>() == null && g.GetComponentInParent<MovingPlatform>() == null))
+                {
+                    safePos = transform.position;
+                    hasSafe = true;
+                }
+            }
+        }
+        else groundedTime = 0f;
     }
 
     public void TakeDamage(int amount)
@@ -78,15 +104,15 @@ public class PlayerHealth : MonoBehaviour
         CurrentHealth = Mathf.Max(CurrentHealth - Mathf.Max(0, damage), 0);
         healthBar.SetHealth(CurrentHealth);
         if (CurrentHealth == 0) StartCoroutine(Die());
-        else StartCoroutine(RespawnAfterFall());
+        else StartCoroutine(RespawnAfterFall(safeGroundRespawn && hasSafe ? safePos : spawnPosition));
     }
 
-    IEnumerator RespawnAfterFall()
+    IEnumerator RespawnAfterFall(Vector3 target)
     {
         isDead = true; // bloque les dégâts pendant la téléportation
         if (movement != null) movement.controlsEnabled = false;
         yield return GameUI.Instance.FadeTo(Color.black, 0.25f);
-        transform.position = spawnPosition;
+        transform.position = target;
         if (rb != null) rb.velocity = Vector2.zero;
         yield return new WaitForSeconds(0.15f);
         yield return GameUI.Instance.FadeTo(new Color(0, 0, 0, 0), 0.3f);

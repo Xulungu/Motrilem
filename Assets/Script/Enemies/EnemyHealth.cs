@@ -17,6 +17,8 @@ public class EnemyHealth : MonoBehaviour
 
     /// <summary>Appelé à la mort (paramètre : écrasé par le joueur ?).</summary>
     public event System.Action<bool> OnDeath;
+    /// <summary>Déclenché à chaque sort reçu (pour les décors qui réagissent à un élément précis).</summary>
+    public event System.Action<MagicType> OnHit;
 
     public int Health { get; private set; }
     public bool IsDead { get; private set; }
@@ -61,6 +63,7 @@ public class EnemyHealth : MonoBehaviour
     public void TakeDamage(int amount, MagicType element, Vector2 hitDirection)
     {
         if (IsDead) return;
+        if (OnHit != null) OnHit(element);
         // Un ennemi gelé se brise plus facilement
         if (freezeTimer > 0f) amount += 1;
         Health -= amount;
@@ -85,6 +88,26 @@ public class EnemyHealth : MonoBehaviour
         }
 
         if (Health <= 0) Die(false);
+    }
+
+    /// <summary>Le joueur retombe sur la tête de l'ennemi : petit dégât (la magie reste bien plus efficace).</summary>
+    public void StompHit(int amount)
+    {
+        if (IsDead) return;
+        Health -= Mathf.Max(1, amount);
+        flashTimer = 0.15f;
+        if (visuals != null) visuals.Hit(Vector2.up);
+        AudioManager.Play("ecrase", 0.6f, Random.Range(0.95f, 1.1f));
+        if (Health <= 0) Die(true);
+    }
+
+    /// <summary>Remet l'ennemi en pleine forme (le combat de boss recommence après la mort du joueur).</summary>
+    public void Restore()
+    {
+        if (IsDead) return;
+        Health = maxHealth;
+        burnTimer = slowTimer = freezeTimer = stunTimer = 0f;
+        iceHits = 0;
     }
 
     /// <summary>Mort immédiate (écrasé par le joueur...).</summary>

@@ -12,6 +12,8 @@ public class SaveData
     public int health = -1;
     public int magic = 0;
     public int maxHealthBonus = 0;
+    public int magic2 = 0;          // seconde magie (0 = aucune)
+    public bool chargeUnlocked = false; // attaque chargée débloquée
     public List<string> flags = new List<string>();
     public List<string> statues = new List<string>();
     public PlayerProfileData profile = new PlayerProfileData();
@@ -25,6 +27,20 @@ public static class SaveSystem
     private static SaveData session;
     private static bool pendingApply;
     private static bool skipIntro;
+
+    // Retour d'une scène vers une autre (ex. : sortie du donjon) : où replacer le joueur
+    private static string returnScene = "";
+    private static Vector2 returnPos;
+
+    public static void SetReturnSpawn(string scene, Vector2 pos) { returnScene = scene; returnPos = pos; skipIntro = true; }
+
+    public static bool ConsumeReturnSpawn(out Vector2 pos)
+    {
+        pos = returnPos;
+        if (string.IsNullOrEmpty(returnScene) || SceneManager.GetActiveScene().name != returnScene) return false;
+        returnScene = "";
+        return true;
+    }
 
     public static string FilePath { get { return Path.Combine(Application.persistentDataPath, "sauvegarde.json"); } }
     public static bool HasSave { get { return File.Exists(FilePath); } }
@@ -45,6 +61,7 @@ public static class SaveSystem
         session = new SaveData();
         pendingApply = false;
         skipIntro = false;
+        returnScene = "";
         PlayerPrefs.DeleteKey(PlayerMagic.SaveKey);
         if (HasSave)
         {

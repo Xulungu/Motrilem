@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 // Bassin d'acide : surface animée, bulles, lueur verte.
@@ -6,14 +7,35 @@ using UnityEngine;
 public class AcidPool : MonoBehaviour
 {
     public int damage = 25;
+    [Tooltip("Vrai : acide purement décoratif (aucun danger)")]
+    public bool harmless = false;
     [Tooltip("Largeur et profondeur du bassin (unités)")]
     public Vector2 size = new Vector2(5f, 3.6f);
+    [Tooltip("Ordre d'affichage du corps, de la surface et de la lueur (négatifs : l'acide passe derrière les rochers)")]
+    public int bodyOrder = 5, surfaceOrder = 6, glowOrder = 7;
     public float bubbleRate = 1.5f; // bulles par seconde et par 10 unités de largeur
 
     private SpriteRenderer body, surface, glow;
     private Sprite[] surfaceFrames;
     private float frameTimer, bubbleTimer;
     private int frame;
+
+    private static readonly List<AcidPool> all = new List<AcidPool>();
+    void OnEnable() { all.Add(this); }
+    void OnDisable() { all.Remove(this); }
+
+    /// <summary>Vrai si la position est dans (ou à moins de 'margin' unités d') un bassin dangereux.</summary>
+    public static bool NearAcid(Vector3 p, float margin)
+    {
+        for (int i = 0; i < all.Count; i++)
+        {
+            AcidPool a = all[i];
+            if (a == null || a.harmless) continue;
+            Vector3 c = a.transform.position;
+            if (Mathf.Abs(p.x - c.x) <= a.size.x * 0.5f + margin && p.y >= c.y - a.size.y * 0.5f - margin && p.y <= c.y + a.size.y * 0.5f + margin + 2f) return true;
+        }
+        return false;
+    }
 
     void Awake()
     {
@@ -32,12 +54,12 @@ public class AcidPool : MonoBehaviour
         for (int i = 0; i < 4; i++) surfaceFrames[i] = FxUtil.LoadSprite("acide_surface_" + i);
 
         // Corps de l'acide (répété)
-        body = FxUtil.MakeSprite("Acide", bodySprite, transform.position + new Vector3(0f, -0.15f, 0f), 5, Color.white, null, transform);
+        body = FxUtil.MakeSprite("Acide", bodySprite, transform.position + new Vector3(0f, -0.15f, 0f), bodyOrder, Color.white, null, transform);
         body.drawMode = SpriteDrawMode.Tiled;
         body.size = new Vector2(size.x, size.y - 0.3f);
 
         // Surface ondulante
-        surface = FxUtil.MakeSprite("Surface", surfaceFrames[0], transform.position + new Vector3(0f, size.y * 0.5f - 0.2f, 0f), 6, Color.white, null, transform);
+        surface = FxUtil.MakeSprite("Surface", surfaceFrames[0], transform.position + new Vector3(0f, size.y * 0.5f - 0.2f, 0f), surfaceOrder, Color.white, null, transform);
         surface.drawMode = SpriteDrawMode.Tiled;
         surface.size = new Vector2(size.x, 0.375f);
 
@@ -45,7 +67,7 @@ public class AcidPool : MonoBehaviour
         Sprite g = FxUtil.LoadSprite("lueur_douce");
         if (g != null)
         {
-            glow = FxUtil.MakeSprite("Lueur", g, transform.position + new Vector3(0f, size.y * 0.5f, 0f), 7, new Color(0.5f, 1f, 0.3f, 0.18f), FxUtil.Additive, transform);
+            glow = FxUtil.MakeSprite("Lueur", g, transform.position + new Vector3(0f, size.y * 0.5f, 0f), glowOrder, new Color(0.5f, 1f, 0.3f, 0.18f), FxUtil.Additive, transform);
             glow.transform.localScale = new Vector3(size.x / 2f + 1f, 1.4f, 1f);
         }
     }
@@ -90,7 +112,7 @@ public class AcidPool : MonoBehaviour
 
     void OnTriggerEnter2D(Collider2D other)
     {
-        if (!other.CompareTag("Player")) return;
+        if (harmless || !other.CompareTag("Player")) return;
         PlayerHealth health = other.GetComponentInParent<PlayerHealth>();
         if (health == null) return;
         AudioManager.Play("acide", 0.8f, Random.Range(0.9f, 1.1f));

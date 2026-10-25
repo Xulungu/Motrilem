@@ -22,6 +22,7 @@ public class PauseMenu : MonoBehaviour
     private int selected;
     private bool inSettings;
     private Font font;
+    private readonly VolumeSliders sliders = new VolumeSliders();
 
     static readonly string[] Labels = { "Reprendre", "Commandes", "Paramètres", "Menu principal", "Quitter le jeu" };
 
@@ -45,9 +46,10 @@ public class PauseMenu : MonoBehaviour
 
         if (inSettings)
         {
-            if (Input.GetKeyDown(KeyCode.Escape) || Input.GetKeyDown(KeyCode.Backspace) || Input.GetKeyDown(KeyCode.E) ||
-                Input.GetKeyDown(KeyCode.Return) || Input.GetMouseButtonDown(1))
-                ShowPanel(null);
+            if (openPanel == settingsPanel) sliders.Tick();
+            bool closeKey = Input.GetKeyDown(KeyCode.Escape) || Input.GetKeyDown(KeyCode.Backspace) || Input.GetMouseButtonDown(1);
+            if (openPanel != settingsPanel) closeKey = closeKey || Input.GetKeyDown(KeyCode.E) || Input.GetKeyDown(KeyCode.Return);
+            if (closeKey) ShowPanel(null);
             return;
         }
 
@@ -81,7 +83,7 @@ public class PauseMenu : MonoBehaviour
     {
         if (SceneManager.GetActiveScene().name == MenuSceneName) return false;
         if (FindObjectOfType<PlayerMovement>() == null) return false;
-        if (MagicChoiceUI.BlocksPause) return false; // Échap sert à quitter le choix de magie
+        if (MagicChoiceUI.BlocksPause || UpgradeChoiceUI.BlocksPause) return false; // Échap sert à quitter le choix de magie
         return true;
     }
 
@@ -137,6 +139,7 @@ public class PauseMenu : MonoBehaviour
         openPanel = panel;
         inSettings = panel != null;
         if (panel != null) panel.gameObject.SetActive(true);
+        if (panel == settingsPanel) sliders.Reset();
         mainPanel.gameObject.SetActive(panel == null);
     }
 
@@ -182,29 +185,27 @@ public class PauseMenu : MonoBehaviour
 
         settingsPanel = UIFactory.Rect("Paramètres", root);
         UIFactory.Stretch(settingsPanel, 0);
-        Image box = UIFactory.Box("Cadre", settingsPanel, new Vector2(0, -20), new Vector2(900, 380), new Color(0.03f, 0.03f, 0.07f, 0.95f));
+        Image box = UIFactory.Box("Cadre", settingsPanel, new Vector2(0, -60), new Vector2(1000, 560), new Color(0.03f, 0.03f, 0.07f, 0.95f));
         Outline ol = box.gameObject.AddComponent<Outline>();
         ol.effectColor = new Color(0.56f, 0.94f, 1f, 0.5f);
         ol.effectDistance = new Vector2(3, 3);
         Text st = UIFactory.Label("Titre", settingsPanel, font, 50, new Color(0.56f, 0.94f, 1f), TextAnchor.MiddleCenter);
-        st.rectTransform.anchoredPosition = new Vector2(0, 110);
+        st.rectTransform.anchoredPosition = new Vector2(0, 150);
         st.rectTransform.sizeDelta = new Vector2(800, 70);
         st.fontStyle = FontStyle.Bold;
         st.text = "PARAMÈTRES";
-        Text sb = UIFactory.Label("Vide", settingsPanel, font, 32, new Color(1f, 1f, 1f, 0.7f), TextAnchor.MiddleCenter);
-        sb.rectTransform.anchoredPosition = new Vector2(0, -10);
-        sb.rectTransform.sizeDelta = new Vector2(800, 100);
-        sb.text = "Rien à régler pour l'instant...";
+        sliders.Build(settingsPanel, font, 50f);
         Text back = UIFactory.Label("Retour", settingsPanel, font, 34, Color.white, TextAnchor.MiddleCenter);
-        back.rectTransform.anchoredPosition = new Vector2(0, -130);
+        back.rectTransform.anchoredPosition = new Vector2(0, -250);
         back.rectTransform.sizeDelta = new Vector2(800, 60);
-        back.text = "› Retour (Échap) ‹";
+        back.text = "Z / S : choisir     Q / D : régler     Échap : retour";
+        back.fontSize = 28;
         settingsPanel.gameObject.SetActive(false);
 
         // Panneau des commandes
         controlsPanel = UIFactory.Rect("Commandes", root);
         UIFactory.Stretch(controlsPanel, 0);
-        Image cbox = UIFactory.Box("Cadre", controlsPanel, new Vector2(0, -60), new Vector2(1300, 660), new Color(0.03f, 0.03f, 0.07f, 0.95f));
+        Image cbox = UIFactory.Box("Cadre", controlsPanel, new Vector2(0, -60), new Vector2(1500, 720), new Color(0.03f, 0.03f, 0.07f, 0.95f));
         Outline col = cbox.gameObject.AddComponent<Outline>();
         col.effectColor = new Color(0.56f, 0.94f, 1f, 0.5f);
         col.effectDistance = new Vector2(3, 3);
@@ -221,23 +222,24 @@ public class PauseMenu : MonoBehaviour
             { "Descendre des planches", "S ou ↓" },
             { "Viser en haut / bas / diagonale", "Z / S (+ Q / D) en lançant" },
             { "Interagir", "E" },
-            { "Lancer un sort", "J, K ou clic gauche" },
+            { "Lancer un sort", "J, K ou clic gauche (maintenir = charger)" },
+            { "Changer de magie", "Tab ou R (si 2 magies)" },
             { "Pause", "Échap" }
         };
         for (int i = 0; i < keys.GetLength(0); i++)
         {
             Text l = UIFactory.Label("Action", controlsPanel, font, 32, new Color(1f, 1f, 1f, 0.75f), TextAnchor.MiddleRight);
-            l.rectTransform.anchoredPosition = new Vector2(-280, 110 - i * 52);
+            l.rectTransform.anchoredPosition = new Vector2(-280, 110 - i * 48);
             l.rectTransform.sizeDelta = new Vector2(560, 50);
             l.text = keys[i, 0];
             Text r = UIFactory.Label("Touches", controlsPanel, font, 32, Color.white, TextAnchor.MiddleLeft);
-            r.rectTransform.anchoredPosition = new Vector2(300, 110 - i * 52);
+            r.rectTransform.anchoredPosition = new Vector2(300, 110 - i * 48);
             r.rectTransform.sizeDelta = new Vector2(560, 50);
             r.fontStyle = FontStyle.Bold;
             r.text = keys[i, 1];
         }
         Text cback = UIFactory.Label("Retour", controlsPanel, font, 34, Color.white, TextAnchor.MiddleCenter);
-        cback.rectTransform.anchoredPosition = new Vector2(0, -330);
+        cback.rectTransform.anchoredPosition = new Vector2(0, -360);
         cback.rectTransform.sizeDelta = new Vector2(800, 60);
         cback.text = "› Retour (Échap) ‹";
         controlsPanel.gameObject.SetActive(false);

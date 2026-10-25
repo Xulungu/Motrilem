@@ -80,7 +80,7 @@ public class Slime : MonoBehaviour
         dmg.knockback = new Vector2(4f, 3.5f);
 
         EnemyHealth eh = go.AddComponent<EnemyHealth>();
-        eh.maxHealth = big ? 3 : 1;
+        eh.maxHealth = big ? 7 : 3;
         eh.rootToDestroy = go;
         eh.deathSound = "slime_mort";
         eh.shardColor = new Color(0.5f, 1f, 0.3f);

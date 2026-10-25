@@ -22,6 +22,24 @@ public class PlayerBehaviorTracker : MonoBehaviour
 
     IEnumerator Start()
     {
+        Vector2 ret;
+        if (SaveSystem.ConsumeReturnSpawn(out ret))
+        {
+            Vector3 rpos = new Vector3(ret.x, ret.y, transform.position.z);
+            transform.position = rpos;
+            if (rb != null) { rb.position = rpos; rb.velocity = Vector2.zero; }
+            PlayerHealth h2 = GetComponent<PlayerHealth>();
+            if (h2 != null) h2.SetSpawnPoint(rpos);
+            if (Camera.main != null)
+            {
+                CameraFollow cam2 = Camera.main.GetComponent<CameraFollow>();
+                if (cam2 != null) cam2.SnapToTarget();
+            }
+            GameUI.Instance.SetFade(Color.black);
+            yield return null;
+            yield return GameUI.Instance.FadeTo(new Color(0, 0, 0, 0), 0.8f);
+            yield break;
+        }
         if (!SaveSystem.ConsumePendingApply()) yield break;
 
         // Reprise d'une sauvegarde : on se place devant la statue

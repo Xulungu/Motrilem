@@ -12,6 +12,12 @@ public class PlayerCaster : MonoBehaviour
     private PlayerMagic magic;
     private PlayerVisuals visuals;
     private float cooldown;
+    private float chargeTime;
+    private bool charging;
+    private SpriteRenderer chargeFx;
+    private bool chargeFull;
+    public float maxChargeTime = 1.1f;
+    const float TapTime = 0.22f;
 
     void Awake()
     {
@@ -26,10 +32,63 @@ public class PlayerCaster : MonoBehaviour
         if (magic == null || magic.magic == MagicType.Aucune) return;
         if (pm == null || !pm.controlsEnabled || pm.externalControl) return;
 
-        if (GameInput.AttackDown() && cooldown <= 0f) Cast();
+        if (!SaveSystem.Session.chargeUnlocked)
+        {
+            if (GameInput.AttackDown() && cooldown <= 0f) Cast(0f);
+            return;
+        }
+
+        // Attaque chargée : maintenir pour charger, relâcher pour lancer
+        if (!charging)
+        {
+            if (GameInput.AttackDown() && cooldown <= 0f) { charging = true; chargeTime = 0f; chargeFull = false; }
+        }
+        else
+        {
+            chargeTime += Time.deltaTime;
+            UpdateChargeFx();
+            if (!GameInput.AttackHeld())
+            {
+                charging = false;
+                HideChargeFx();
+                float c = chargeTime < TapTime ? 0f : Mathf.Clamp01((chargeTime - TapTime) / (maxChargeTime - TapTime));
+                Cast(c);
+                if (c > 0.5f) cooldown += 0.25f;
+            }
+        }
     }
 
-    void Cast()
+    void OnDisable() { charging = false; HideChargeFx(); }
+
+    void UpdateChargeFx()
+    {
+        if (chargeTime < TapTime) return;
+        float c = Mathf.Clamp01((chargeTime - TapTime) / (maxChargeTime - TapTime));
+        if (chargeFx == null)
+        {
+            Sprite glow = FxUtil.LoadSprite("lueur_douce");
+            if (glow == null) return;
+            chargeFx = FxUtil.MakeSprite("Charge", glow, transform.position, 10005, Color.clear, FxUtil.Additive, transform);
+        }
+        chargeFx.gameObject.SetActive(true);
+        Vector2 dir = AimDirection();
+        chargeFx.transform.position = transform.position + new Vector3(dir.x * 0.45f, 0.05f + dir.y * 0.55f, 0f);
+        Color col = PlayerMagic.ColorOf(magic.magic);
+        float pulse = 0.8f + 0.2f * Mathf.Sin(Time.time * (12f + c * 20f));
+        col.a = (0.25f + 0.6f * c) * pulse;
+        chargeFx.color = col;
+        float s = (0.35f + 1.1f * c) / Mathf.Max(0.0001f, transform.lossyScale.x);
+        chargeFx.transform.localScale = new Vector3(s, s, 1f);
+        if (c >= 1f && !chargeFull)
+        {
+            chargeFull = true;
+            AudioManager.Play("menu_valider", 0.5f, 1.6f);
+        }
+    }
+
+    void HideChargeFx() { if (chargeFx != null) chargeFx.gameObject.SetActive(false); }
+
+    void Cast(float charge)
     {
         MagicType type = magic.magic;
         PlayerProfile.Record(type == MagicType.Feu ? PlayerProfile.Event.CastFire : type == MagicType.Foudre ? PlayerProfile.Event.CastLightning : PlayerProfile.Event.CastIce);
@@ -37,7 +96,7 @@ public class PlayerCaster : MonoBehaviour
 
         Vector2 dir = AimDirection();
         Vector3 origin = transform.position + new Vector3(dir.x * 0.45f, 0.05f + dir.y * 0.55f, 0f);
-        MagicProjectile.Spawn(type, origin, dir, gameObject);
+        MagicProjectile.Spawn(type, origin, dir, gameObject, charge);
         if (visuals == null) visuals = GetComponent<PlayerVisuals>();
         if (visuals != null) visuals.CastPunch();
 

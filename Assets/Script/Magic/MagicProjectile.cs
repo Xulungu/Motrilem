@@ -18,6 +18,7 @@ public class MagicProjectile : MonoBehaviour
     private bool done;
     private float age;
     private float baseAngle;
+    private float scaleMul = 1f;
 
     public static MagicProjectile Spawn(MagicType type, Vector3 position, int dir, GameObject owner)
     {
@@ -25,7 +26,7 @@ public class MagicProjectile : MonoBehaviour
     }
 
     /// <summary>Lance un sort dans n'importe quelle direction (horizontale, verticale ou diagonale).</summary>
-    public static MagicProjectile Spawn(MagicType type, Vector3 position, Vector2 dir, GameObject owner)
+    public static MagicProjectile Spawn(MagicType type, Vector3 position, Vector2 dir, GameObject owner, float charge = 0f)
     {
         dir = dir.sqrMagnitude > 0.0001f ? dir.normalized : Vector2.right;
         // Le sprite pointe vers la droite : retourné vers la gauche, puis incliné selon la visée
@@ -88,6 +89,15 @@ public class MagicProjectile : MonoBehaviour
             case MagicType.Foudre: p.speed = 26f; p.damage = 2; break;
             default: p.speed = 14f; p.damage = 2; break;
         }
+        // Sort chargé (0..1) : plus gros, plus de dégâts
+        charge = Mathf.Clamp01(charge);
+        if (charge > 0f)
+        {
+            p.damage = Mathf.RoundToInt(p.damage * (1f + 2f * charge));
+            p.scaleMul = 1f + charge * 0.9f;
+            go.transform.localScale = Vector3.one * p.scaleMul;
+            col2d.radius *= 1f + charge * 0.5f;
+        }
         return p;
     }
 
@@ -109,10 +119,10 @@ public class MagicProjectile : MonoBehaviour
         {
             case MagicType.Feu:
                 float f = 1f + 0.15f * Mathf.Sin(age * 40f);
-                transform.localScale = new Vector3(f, f, 1f);
+                transform.localScale = new Vector3(f * scaleMul, f * scaleMul, 1f);
                 break;
             case MagicType.Foudre:
-                transform.localScale = new Vector3(1f, Random.value < 0.5f ? 1f : -1f, 1f);
+                transform.localScale = new Vector3(scaleMul, (Random.value < 0.5f ? 1f : -1f) * scaleMul, 1f);
                 break;
             default:
                 transform.rotation = Quaternion.Euler(0, 0, baseAngle + Mathf.Sin(age * 25f) * 6f);
@@ -127,6 +137,7 @@ public class MagicProjectile : MonoBehaviour
 
         EnemyHealth enemy = other.GetComponentInParent<EnemyHealth>();
         if (other.isTrigger && enemy == null) return; // zones d'aide, checkpoints...
+        if (other.usedByEffector && other.GetComponent<PlatformEffector2D>() != null) return; // les planches ne bloquent pas les sorts
         if (enemy != null && enemy.IsDead) return;
 
         SnapToContact(other);

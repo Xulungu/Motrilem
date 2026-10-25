@@ -10,6 +10,7 @@ public class AudioManager : MonoBehaviour
 {
     public const string MusicVolumeKey = "Motrilem.VolumeMusique";
     public const string SfxVolumeKey = "Motrilem.VolumeSons";
+    public const string VoiceVolumeKey = "Motrilem.VolumeDialogues";
 
     private static AudioManager instance;
     private readonly Dictionary<string, AudioClip> cache = new Dictionary<string, AudioClip>();
@@ -23,6 +24,12 @@ public class AudioManager : MonoBehaviour
     {
         get { return PlayerPrefs.GetFloat(MusicVolumeKey, 0.8f); }
         set { PlayerPrefs.SetFloat(MusicVolumeKey, Mathf.Clamp01(value)); Instance.ApplyMusicVolume(); }
+    }
+
+    public static float VoiceVolume
+    {
+        get { return PlayerPrefs.GetFloat(VoiceVolumeKey, 1f); }
+        set { PlayerPrefs.SetFloat(VoiceVolumeKey, Mathf.Clamp01(value)); }
     }
 
     public static float SfxVolume
@@ -86,6 +93,20 @@ public class AudioManager : MonoBehaviour
         am.next = (am.next + 1) % am.pool.Length;
         src.pitch = pitch;
         src.volume = volume * SfxVolume;
+        src.clip = clip;
+        src.Play();
+    }
+
+    /// <summary>Petit bruitage de voix (dialogues, livres) : réglé par le volume « Dialogues ».</summary>
+    public static void PlayVoice(string name, float volume = 1f, float pitch = 1f)
+    {
+        AudioManager am = Instance;
+        AudioClip clip = am.Get(name);
+        if (clip == null) return;
+        AudioSource src = am.pool[am.next];
+        am.next = (am.next + 1) % am.pool.Length;
+        src.pitch = pitch;
+        src.volume = volume * VoiceVolume;
         src.clip = clip;
         src.Play();
     }

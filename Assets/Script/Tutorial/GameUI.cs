@@ -236,7 +236,7 @@ public class GameUI : MonoBehaviour
             {
                 char c = text[i];
                 if (char.IsLetterOrDigit(c) && (voiced++ % 2 == 0) && !string.IsNullOrEmpty(voice))
-                    AudioManager.Play(voice, 0.35f, voicePitch * Random.Range(0.9f, 1.12f));
+                    AudioManager.PlayVoice(voice, 0.35f, voicePitch * Random.Range(0.9f, 1.12f));
             }
             lastShown = count;
             target.text = text.Substring(0, count);
@@ -395,6 +395,19 @@ public static class GameInput
     {
         if (PauseMenu.BlocksInput) return false;
         return Input.GetKeyDown(KeyCode.J) || Input.GetKeyDown(KeyCode.K) || Input.GetMouseButtonDown(0);
+    }
+
+    /// <summary>Changer de magie (si le joueur en possède deux).</summary>
+    public static bool SwitchMagicDown()
+    {
+        if (PauseMenu.BlocksInput) return false;
+        return Input.GetKeyDown(KeyCode.Tab) || Input.GetKeyDown(KeyCode.R);
+    }
+
+    public static bool AttackHeld()
+    {
+        if (PauseMenu.BlocksInput) return false;
+        return Input.GetKey(KeyCode.J) || Input.GetKey(KeyCode.K) || Input.GetMouseButton(0);
     }
 
     public static bool ConfirmDown()
