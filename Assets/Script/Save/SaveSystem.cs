@@ -28,11 +28,62 @@ public static class SaveSystem
     private static bool pendingApply;
     private static bool skipIntro;
 
-    // Retour d'une scène vers une autre (ex. : sortie du donjon) : où replacer le joueur
+    // Retour d'une scène vers une autre (ex. : sortie du donjon, passage entre deux cartes) : où replacer le joueur
     private static string returnScene = "";
     private static Vector2 returnPos;
+    private static int returnHealth = -1;
+    private static Vector2 returnVelocity;
+    private static bool hasReturnSafe;
+    private static Vector2 returnSafe;
+    private static string returnLift = "";
+    private static float[] returnLiftState;
 
-    public static void SetReturnSpawn(string scene, Vector2 pos) { returnScene = scene; returnPos = pos; skipIntro = true; }
+    public static void SetReturnSpawn(string scene, Vector2 pos) { returnScene = scene; returnPos = pos; returnHealth = -1; returnVelocity = Vector2.zero; hasReturnSafe = false; returnLift = ""; skipIntro = true; }
+
+    /// <summary>Changement de zone : le joueur garde sa vie.</summary>
+    public static void SetReturnSpawn(string scene, Vector2 pos, int health) { SetReturnSpawn(scene, pos); returnHealth = health; }
+
+    /// <summary>Passage entre deux cartes : même endroit du monde, même élan, et un sol sûr où réapparaître en cas de chute.</summary>
+    public static void SetTransit(string scene, Vector2 pos, int health, Vector2 velocity, Vector2 safeGround, string liftId, float[] liftState)
+    {
+        SetReturnSpawn(scene, pos, health);
+        returnVelocity = velocity;
+        hasReturnSafe = true;
+        returnSafe = safeGround;
+        returnLift = liftId ?? "";
+        returnLiftState = liftState;
+    }
+
+    public static int ConsumeReturnHealth() { int h = returnHealth; returnHealth = -1; return h; }
+    public static Vector2 ConsumeReturnVelocity() { Vector2 v = returnVelocity; returnVelocity = Vector2.zero; return v; }
+    public static bool ConsumeReturnSafe(out Vector2 safe) { safe = returnSafe; bool h = hasReturnSafe; hasReturnSafe = false; return h; }
+
+    /// <summary>État d'un ascenseur transmis d'une carte à l'autre (null si ce n'est pas le bon).</summary>
+    public static float[] ConsumeLiftState(string liftId)
+    {
+        if (string.IsNullOrEmpty(returnLift) || returnLift != liftId) return null;
+        float[] st = returnLiftState;
+        returnLift = ""; returnLiftState = null;
+        return st;
+    }
+
+    // Dernier point de réapparition (statue) : une mort ramène à la statue, même si elle est sur une autre carte
+    public static string CheckpointScene = "";
+    public static Vector2 CheckpointPos;
+    public static void SetCheckpoint(string scene, Vector2 pos) { CheckpointScene = scene; CheckpointPos = pos; }
+
+    // Objets cassés depuis la dernière sauvegarde (urnes) : ils ne reviennent QUE quand le joueur sauvegarde
+    private static readonly HashSet<string> broken = new HashSet<string>();
+    public static bool IsBroken(string id) { return broken.Contains(id); }
+    public static void MarkBroken(string id) { broken.Add(id); }
+
+    /// <summary>Anciennes sauvegardes : le marécage est découpé en cartes (une scène par groupe de zones).</summary>
+    public static string ResolveZoneScene(string scene, float x, float y)
+    {
+        if (string.IsNullOrEmpty(scene) || !SwampZones.IsSwampScene(scene)) return scene;
+        string wanted = SwampZones.SceneAt(x, y);
+        return Application.CanStreamedLevelBeLoaded(wanted) ? wanted : scene;
+    }
 
     public static bool ConsumeReturnSpawn(out Vector2 pos)
     {
@@ -62,6 +113,8 @@ public static class SaveSystem
         pendingApply = false;
         skipIntro = false;
         returnScene = "";
+        broken.Clear();
+        CheckpointScene = "";
         PlayerPrefs.DeleteKey(PlayerMagic.SaveKey);
         if (HasSave)
         {
@@ -93,6 +146,7 @@ public static class SaveSystem
         s.y = position.y;
         s.health = health;
         s.date = System.DateTime.Now.ToString("dd/MM/yyyy HH:mm");
+        broken.Clear();   // sauvegarder fait réapparaître les urnes
         PlayerProfile.Record(PlayerProfile.Event.Save);
         try
         {
@@ -118,7 +172,11 @@ public static class SaveSystem
     public static bool Continue()
     {
         SaveData data = ReadSave();
-        if (data == null || string.IsNullOrEmpty(data.scene) || !Application.CanStreamedLevelBeLoaded(data.scene)) return false;
+        if (data == null || string.IsNullOrEmpty(data.scene)) return false;
+        data.scene = ResolveZoneScene(data.scene, data.x, data.y);
+        broken.Clear();
+        CheckpointScene = "";
+        if (!Application.CanStreamedLevelBeLoaded(data.scene)) return false;
         session = data;
         if (session.profile == null) session.profile = new PlayerProfileData();
         PlayerPrefs.SetInt(PlayerMagic.SaveKey, data.magic);

@@ -15,6 +15,18 @@ EditorBuildSettings:
     path: Assets/Scenes/EtangAcide.unity
     guid: 342877670f066a14ca2e71c40272efb4
   - enabled: 1
+    path: Assets/Scenes/EtangRuines.unity
+    guid: 7083483afb6da0041b26e9aab0df47ed
+  - enabled: 1
+    path: Assets/Scenes/EtangHauteurs.unity
+    guid: 75ed77f47206fc1468e4f157b1db1685
+  - enabled: 1
+    path: Assets/Scenes/EtangCoeur.unity
+    guid: b6eae81e9ba55e245aac496fae9a4fb8
+  - enabled: 1
+    path: Assets/Scenes/EtangGluant.unity
+    guid: b7134cc212a51c64d930591aed95f441
+  - enabled: 1
     path: Assets/Scenes/Donjon.unity
     guid: 0d9038f80ad3b4c45978832e9259a846
   - enabled: 1

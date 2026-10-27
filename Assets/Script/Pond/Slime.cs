@@ -12,6 +12,17 @@ public class Slime : MonoBehaviour
     public Vector2 hop = new Vector2(2.2f, 5f);
     public Vector2 chaseHop = new Vector2(3.8f, 6.5f);
     public float hopInterval = 1.3f;
+    [Tooltip("Échelle du corps (1 = gros slime, 0,6 = petit ; plus pour un mini-boss)")]
+    public float bodyScale = 0f;
+    [Tooltip("Nombre de petits slimes à la mort d'un gros")]
+    public int splitCount = 2;
+
+    [HideInInspector] public bool suspended;   // le mini-boss prépare une attaque : plus de bonds automatiques
+    public bool Grounded { get { return grounded; } }
+    public bool Preparing { get { return preparing; } }
+    /// <summary>Écrase / étire brièvement le visuel (annonce d'une attaque).</summary>
+    public void Punch(Vector2 s) { squash = s; }
+    public SpriteRenderer BodyRenderer { get { return sr; } }
 
     private Rigidbody2D rb;
     private Collider2D body;
@@ -28,13 +39,18 @@ public class Slime : MonoBehaviour
     private Vector2 squash = Vector2.one, squashVel;
     private float halfHeight = 0.5f;
     private readonly Collider2D[] hits = new Collider2D[8];
+    private float acidUntil, acidSurface;
+    private bool floating;
+
+    /// <summary>Appelé par un bassin d'acide tant que le slime est dedans : il flotte à la surface (l'acide est son élément).</summary>
+    public void FloatInAcid(float surfaceY) { acidUntil = Time.time + 0.15f; acidSurface = surfaceY; }
 
     // ------------------------------------------------------------------ fabrication
     /// <summary>Crée un slime complet (corps, visuel, hitbox de dégâts, point faible, points de vie).</summary>
-    public static Slime Create(Vector3 position, bool big, Transform parent = null)
+    public static Slime Create(Vector3 position, bool big, Transform parent = null, float scaleMul = 1f)
     {
-        float scale = big ? 1f : 0.6f;
-        GameObject go = new GameObject(big ? "Gros slime" : "Petit slime");
+        float scale = (big ? 1f : 0.6f) * scaleMul;
+        GameObject go = new GameObject(scaleMul > 1.5f ? "Gros Gluant" : big ? "Gros slime" : "Petit slime");
         if (parent != null) go.transform.SetParent(parent, true);
         go.transform.position = position;
 
@@ -78,6 +94,9 @@ public class Slime : MonoBehaviour
         EnemyDamage dmg = hit.AddComponent<EnemyDamage>();
         dmg.damage = big ? 15 : 10;
         dmg.knockback = new Vector2(4f, 3.5f);
+        // Le gluant colle aux pieds : le joueur est ralenti quand il touche un slime
+        dmg.slowFactor = big ? 0.55f : 0.7f;
+        dmg.slowDuration = big ? 2f : 1.4f;
 
         EnemyHealth eh = go.AddComponent<EnemyHealth>();
         eh.maxHealth = big ? 7 : 3;
@@ -87,6 +106,7 @@ public class Slime : MonoBehaviour
 
         Slime slime = go.AddComponent<Slime>();
         slime.big = big;
+        slime.bodyScale = scale;
         if (!big)
         {
             slime.hop = new Vector2(2.6f, 4.5f);
@@ -129,6 +149,17 @@ public class Slime : MonoBehaviour
     void FixedUpdate()
     {
         grounded = CheckGround();
+        floating = Time.time < acidUntil;
+        if (floating)
+        {
+            // flottaison : poussé vers la surface, il ne coule pas ; à la surface il peut bondir comme sur le sol
+            float depth = acidSurface - body.bounds.min.y;
+            float vy = rb.velocity.y;
+            if (depth > 0.1f) vy = Mathf.Lerp(vy, Mathf.Clamp(depth * 4f, 1f, 5f), 0.35f);
+            else if (vy < 0f) vy *= 0.4f;
+            rb.velocity = new Vector2(rb.velocity.x, vy);
+            grounded = depth < 0.5f && vy <= 0.8f;
+        }
         if (grounded && !wasGrounded && rb.velocity.y <= 0.1f)
         {
             squash = new Vector2(1.35f, 0.7f);
@@ -149,7 +180,7 @@ public class Slime : MonoBehaviour
         {
             timer -= dt * mult;
             bool chasing = IsChasing();
-            if (grounded && timer <= 0f && !preparing) StartCoroutine(Hop(chasing, mult));
+            if (grounded && timer <= 0f && !preparing && !suspended) StartCoroutine(Hop(chasing, mult));
         }
 
         // ---- visuel : écrasement / étirement, respiration, images
@@ -160,7 +191,7 @@ public class Slime : MonoBehaviour
         if (mult <= 0f) target = Vector2.one; // gelé / étourdi
         squash = Vector2.SmoothDamp(squash, target, ref squashVel, 0.07f);
 
-        float baseScale = big ? 1f : 0.6f;
+        float baseScale = bodyScale > 0f ? bodyScale : (big ? 1f : 0.6f);
         visual.localScale = new Vector3(squash.x * baseScale, squash.y * baseScale, 1f);
         visual.localPosition = new Vector3(0f, -(1f - squash.y) * halfHeight, 0f);
         if (sr != null)
@@ -187,7 +218,7 @@ public class Slime : MonoBehaviour
             if (transform.position.x > home.x + patrolRange) dir = -1;
             else if (transform.position.x < home.x - patrolRange) dir = 1;
         }
-        bool safe = SafeAhead(dir);
+        bool safe = floating || SafeAhead(dir);
         if (!safe && !chasing) { dir = -dir; safe = SafeAhead(dir); }
 
         yield return new WaitForSeconds(0.25f); // anticipation (il s'écrase avant de sauter)
@@ -220,7 +251,7 @@ public class Slime : MonoBehaviour
     /// <summary>Y a-t-il du sol (et pas un bassin d'acide) là où le slime va retomber ?</summary>
     bool SafeAhead(int direction)
     {
-        Vector2 probe = (Vector2)transform.position + new Vector2(direction * (big ? 1.8f : 1.4f), 0.5f);
+        Vector2 probe = (Vector2)transform.position + new Vector2(direction * (big ? 1.8f : 1.4f) * Mathf.Max(1f, bodyScale), 0.5f);
         RaycastHit2D[] rays = Physics2D.RaycastAll(probe, Vector2.down, 2.6f);
         foreach (RaycastHit2D r in rays)
         {
@@ -245,10 +276,13 @@ public class Slime : MonoBehaviour
     {
         if (!big) return;
         // Le gros slime se divise en deux petits qui sautent de chaque côté
-        for (int i = -1; i <= 1; i += 2)
+        int n = Mathf.Max(2, splitCount);
+        for (int k = 0; k < n; k++)
         {
-            Slime s = Create(transform.position + new Vector3(i * 0.3f, 0.2f, 0f), false, transform.parent);
-            s.StartCoroutine(s.Pop(new Vector2(i * 2.5f, 5f)));
+            float side = (k - (n - 1) * 0.5f) / Mathf.Max(0.5f, (n - 1) * 0.5f);   // de -1 à 1
+            float spread = Mathf.Max(1f, bodyScale);
+            Slime s = Create(transform.position + new Vector3(side * 0.3f * spread, 0.2f, 0f), false, transform.parent);
+            s.StartCoroutine(s.Pop(new Vector2(side * 2.5f + Random.Range(-0.4f, 0.4f), 5f)));
         }
     }
 

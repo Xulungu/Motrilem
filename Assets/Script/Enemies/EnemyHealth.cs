@@ -76,9 +76,6 @@ public class EnemyHealth : MonoBehaviour
                 if (burnTimer <= 0f) burnTick = 0.8f;
                 burnTimer = 1.6f; // brûle pendant 1,6 s (1 dégât toutes les 0,8 s : 2 dégâts en tout)
                 break;
-            case MagicType.Foudre:
-                stunTimer = Mathf.Max(stunTimer, 0.6f);
-                break;
             case MagicType.Glace:
                 slowTimer = 3f;
                 iceHits = iceWindow > 0f ? iceHits + 1 : 1;
@@ -99,6 +96,13 @@ public class EnemyHealth : MonoBehaviour
         if (visuals != null) visuals.Hit(Vector2.up);
         AudioManager.Play("ecrase", 0.6f, Random.Range(0.95f, 1.1f));
         if (Health <= 0) Die(true);
+    }
+
+    /// <summary>Rend des points de vie (sans dépasser le maximum).</summary>
+    public void Heal(int amount)
+    {
+        if (IsDead) return;
+        Health = Mathf.Min(maxHealth, Health + Mathf.Max(0, amount));
     }
 
     /// <summary>Remet l'ennemi en pleine forme (le combat de boss recommence après la mort du joueur).</summary>
@@ -149,7 +153,6 @@ public class EnemyHealth : MonoBehaviour
             if (freezeTimer > 0f) c = new Color(0.55f, 0.85f, 1f);
             else if (slowTimer > 0f) c = Color.Lerp(baseColor, new Color(0.6f, 0.9f, 1f), 0.5f);
             if (burnTimer > 0f) c = Color.Lerp(c, new Color(1f, 0.45f, 0.2f), 0.4f + 0.2f * Mathf.Sin(Time.time * 20f));
-            if (stunTimer > 0f && Mathf.Sin(Time.time * 50f) > 0f) c = Color.Lerp(c, new Color(1f, 0.95f, 0.5f), 0.6f);
             if (alert > 0f) c = Color.Lerp(c, new Color(1f, 0.2f, 0.2f), alert);
             if (flashTimer > 0f) c = new Color(1f, 0.35f, 0.35f);
             sr.color = c;

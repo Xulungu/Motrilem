@@ -27,17 +27,28 @@ public class PlayerBehaviorTracker : MonoBehaviour
         {
             Vector3 rpos = new Vector3(ret.x, ret.y, transform.position.z);
             transform.position = rpos;
-            if (rb != null) { rb.position = rpos; rb.velocity = Vector2.zero; }
+            // Passage entre deux cartes : on garde l'élan (limité) ; le sol sûr sert de point de retour en cas de chute
+            Vector2 carryV = SaveSystem.ConsumeReturnVelocity();
+            carryV = new Vector2(Mathf.Clamp(carryV.x, -9f, 9f), Mathf.Clamp(carryV.y, -14f, 12f));
+            if (rb != null) { rb.position = rpos; rb.velocity = carryV; }
             PlayerHealth h2 = GetComponent<PlayerHealth>();
-            if (h2 != null) h2.SetSpawnPoint(rpos);
+            Vector2 safeGround;
+            bool transit = SaveSystem.ConsumeReturnSafe(out safeGround);
+            if (h2 != null)
+            {
+                if (transit) h2.SetArrivalGround(new Vector3(safeGround.x, safeGround.y, rpos.z));
+                else h2.SetArrivalGround(rpos);
+            }
             if (Camera.main != null)
             {
                 CameraFollow cam2 = Camera.main.GetComponent<CameraFollow>();
                 if (cam2 != null) cam2.SnapToTarget();
             }
             GameUI.Instance.SetFade(Color.black);
+            int carried = SaveSystem.ConsumeReturnHealth();
             yield return null;
-            yield return GameUI.Instance.FadeTo(new Color(0, 0, 0, 0), 0.8f);
+            if (carried > 0 && h2 != null) h2.SetHealth(carried);
+            yield return GameUI.Instance.FadeTo(new Color(0, 0, 0, 0), transit ? 0.3f : 0.8f);
             yield break;
         }
         if (!SaveSystem.ConsumePendingApply()) yield break;

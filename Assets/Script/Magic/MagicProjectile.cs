@@ -3,7 +3,7 @@ using UnityEngine;
 
 // Projectile magique :
 //  - Feu    : boule de feu, explose en petite zone et fait brûler (dégâts sur la durée)
-//  - Foudre : éclair très rapide, étourdit et rebondit sur 2 ennemis proches
+//  - Foudre : éclair très rapide qui rebondit sur 2 ennemis proches (aucun étourdissement)
 //  - Glace  : éclat de glace, ralentit ; 3 coups rapprochés gèlent l'ennemi
 // Le projectile vole tout droit (8 directions possibles) jusqu'à toucher un mur ou un ennemi.
 public class MagicProjectile : MonoBehaviour

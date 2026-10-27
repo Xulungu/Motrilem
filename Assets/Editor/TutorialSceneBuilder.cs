@@ -14,13 +14,13 @@ using UnityEngine.Tilemaps;
 // Menu Motrilem > Tout (re)construire. À l'ouverture du projet, Unity propose de le faire si besoin.
 public static partial class TutorialSceneBuilder
 {
-    const int Version = 13;
+    const int Version = 28;
     const string VersionKey = "Motrilem.BuilderVersion";
 
     const string MenuScene = "Assets/Scenes/Menu.unity";
     const string TutorialScene = "Assets/Scenes/Tutorial.unity";
     const string MainScene = "Assets/Scenes/SampleScene.unity";
-    const string PondScene = "Assets/Scenes/EtangAcide.unity";
+    const string PondScene = "Assets/Scenes/EtangAcide.unity";   // = première carte du marécage (SwampZones.Names[0])
     const string ArtDir = "Assets/Art/Tutorial";
     const string ResSprites = "Assets/Resources/Sprites";
     const string BackgroundDir = "Assets/karsiori/TileMap/Backgrounds";
@@ -138,7 +138,7 @@ public static partial class TutorialSceneBuilder
             BuildTutorial();
             EditorUtility.DisplayProgressBar("Motrilem", "L'Étang Acide...", 0.75f);
             BuildPond();
-            EditorUtility.DisplayProgressBar("Motrilem", "Le donjon du gardien...", 0.82f);
+            EditorUtility.DisplayProgressBar("Motrilem", "Le donjon de Séraphel...", 0.82f);
             BuildDungeon();
             EditorUtility.DisplayProgressBar("Motrilem", "Menu d'accueil...", 0.9f);
             BuildMenu();
@@ -1000,11 +1000,11 @@ public static partial class TutorialSceneBuilder
     static void AddToBuildSettings()
     {
         List<EditorBuildSettingsScene> list = new List<EditorBuildSettingsScene>();
-        string[] order = { MenuScene, TutorialScene, PondScene, DungeonScene, MainScene };
+        string[] order = { MenuScene, TutorialScene, PondScene, SwScenePath(1), SwScenePath(2), SwScenePath(3), SwScenePath(4), DungeonScene, MainScene };
         foreach (string p in order)
             if (File.Exists(p)) list.Add(new EditorBuildSettingsScene(p, true));
         foreach (EditorBuildSettingsScene s in EditorBuildSettings.scenes)
-            if (System.Array.IndexOf(order, s.path) < 0) list.Add(s);
+            if (System.Array.IndexOf(order, s.path) < 0 && File.Exists(s.path)) list.Add(s);   // (les anciennes cartes disparues sont retirées)
         EditorBuildSettings.scenes = list.ToArray();
     }
 }

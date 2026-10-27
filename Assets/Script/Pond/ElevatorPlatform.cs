@@ -9,6 +9,8 @@ public class ElevatorPlatform : MonoBehaviour
     public Vector3[] stops;
     public float speed = 4.5f;
     public float pause = 2.2f;
+    [Tooltip("Identifiant : permet de reprendre l'ascenseur là où il était quand on change de carte")]
+    public string liftId = "";
 
     private Rigidbody2D body;
     private BoxCollider2D box;
@@ -30,6 +32,22 @@ public class ElevatorPlatform : MonoBehaviour
         player = FindObjectOfType<PlayerMovement>();
         wait = pause;
         if (stops != null && stops.Length > 0) body.position = stops[0];
+        // Changement de carte pendant un trajet : l'ascenseur reprend exactement là où il était
+        float[] st = SaveSystem.ConsumeLiftState(liftId);
+        if (st != null && st.Length >= 5 && stops != null && stops.Length > 1)
+        {
+            index = Mathf.Clamp((int)st[2], 0, stops.Length - 1);
+            dir = st[3] >= 0f ? 1 : -1;
+            wait = st[4];
+            body.position = new Vector2(st[0], st[1]);
+            transform.position = new Vector3(st[0], st[1], transform.position.z);
+        }
+    }
+
+    /// <summary>x, y, index, sens, attente : de quoi reprendre l'ascenseur sur l'autre carte.</summary>
+    public float[] ExportState()
+    {
+        return new[] { body.position.x, body.position.y, (float)index, (float)dir, wait };
     }
 
     void FixedUpdate()

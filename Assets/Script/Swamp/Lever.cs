@@ -8,6 +8,9 @@ public class Lever : Interactable
     public SpriteRenderer render;
     public Sprite offSprite, onSprite;
 
+    [Tooltip("-1 : le joueur doit être à gauche du levier, +1 : à droite, 0 : peu importe.")]
+    public int side = 0;
+
     private bool pulled;
 
     public static string Key(string f) { return "levier_" + f; }
@@ -24,6 +27,17 @@ public class Lever : Interactable
         pulled = SaveSystem.HasFlag(Key(flag));
         canInteract = !pulled;
         Refresh();
+    }
+
+    protected override void Update()
+    {
+        // Impossible d'actionner un levier depuis l'autre côté du mur
+        if (!pulled && player != null)
+        {
+            float dx = player.transform.position.x - transform.position.x;
+            canInteract = side == 0 || (side < 0 ? dx < 0.1f : dx > -0.1f);
+        }
+        base.Update();
     }
 
     void Refresh()

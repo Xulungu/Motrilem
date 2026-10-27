@@ -5,7 +5,7 @@ using UnityEngine.SceneManagement;
 // Sortie du donjon : retour au temple du marécage, devant la porte par laquelle on est entré.
 public class DungeonExitDoor : Interactable
 {
-    public string sceneToLoad = "EtangAcide";
+    public string sceneToLoad = "EtangCoeur";
     public Vector2 returnPosition = new Vector2(322.5f, -43.2f);
     private bool busy;
 

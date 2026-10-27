@@ -44,6 +44,8 @@ public class DungeonDoor : Interactable
         yield return ui.FadeTo(Color.black, 0.9f);
         if (Application.CanStreamedLevelBeLoaded(sceneToLoad))
         {
+            // Gardien déjà vaincu : l'entrée est éboulée, on arrive directement dans la Brèche
+            if (SaveSystem.HasFlag("boss_moustique")) SaveSystem.SetReturnSpawn(sceneToLoad, new Vector2(229.5f, 1f));
             SceneManager.LoadScene(sceneToLoad);
         }
         else

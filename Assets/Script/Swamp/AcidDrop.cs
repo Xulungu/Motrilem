@@ -50,7 +50,7 @@ public class AcidDrop : MonoBehaviour
         if (other.CompareTag("Player"))
         {
             PlayerHealth ph = other.GetComponentInParent<PlayerHealth>();
-            if (ph != null && ph.CanTakeDamage) ph.TakeDamage(damage);
+            if (ph != null && ph.CanTakeDamage && !AcidImmunity.Has) ph.TakeDamage(damage);
             Land(false);
             return;
         }

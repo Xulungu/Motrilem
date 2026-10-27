@@ -83,6 +83,7 @@ public class PauseMenu : MonoBehaviour
     {
         if (SceneManager.GetActiveScene().name == MenuSceneName) return false;
         if (FindObjectOfType<PlayerMovement>() == null) return false;
+        if (DeathScreen.Active) return false;
         if (MagicChoiceUI.BlocksPause || UpgradeChoiceUI.BlocksPause) return false; // Échap sert à quitter le choix de magie
         return true;
     }

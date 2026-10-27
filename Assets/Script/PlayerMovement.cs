@@ -165,7 +165,7 @@ public class PlayerMovement : MonoBehaviour
         {
             input = controlsEnabled ? GameInput.Horizontal() : 0f;
             UpdateMomentum(input, dt);
-            MovePlayer(input * Mathf.Lerp(moveSpeed, runSpeed, Momentum));
+            MovePlayer(input * Mathf.Lerp(moveSpeed, runSpeed, Momentum) * (Time.time < slowUntil ? slowFactor : 1f));
 
             if (controlsEnabled && jumpBufferTimer > 0f && coyoteTimer > 0f) Jump();
         }
@@ -295,6 +295,16 @@ public class PlayerMovement : MonoBehaviour
     }
 
     /// <summary>Active/désactive le mode cinématique : plus de contrôle joueur, le personnage s'arrête.</summary>
+    private float slowFactor = 1f, slowUntil;
+
+    /// <summary>Ralentit le déplacement horizontal (slime collant...). Le plus fort ralentissement en cours l'emporte.</summary>
+    public void ApplySlow(float factor, float duration)
+    {
+        if (Time.time < slowUntil) factor = Mathf.Min(factor, slowFactor);
+        slowFactor = Mathf.Clamp(factor, 0.2f, 1f);
+        slowUntil = Mathf.Max(slowUntil, Time.time + duration);
+    }
+
     public void SetCutscene(bool on)
     {
         controlsEnabled = !on;

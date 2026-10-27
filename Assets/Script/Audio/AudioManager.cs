@@ -126,6 +126,9 @@ public class AudioManager : MonoBehaviour
         am.fade = am.StartCoroutine(am.CrossFade(clip, fadeTime));
     }
 
+    public static string CurrentMusic { get { return Instance.currentMusic; } }
+    public static float CurrentVolume { get { return Instance.musicTarget; } }
+
     public static void StopMusic(float fadeTime = 1.5f)
     {
         AudioManager am = Instance;

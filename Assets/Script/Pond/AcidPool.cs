@@ -110,9 +110,34 @@ public class AcidPool : MonoBehaviour
         Gizmos.DrawCube(transform.position, new Vector3(size.x, size.y, 0.1f));
     }
 
+    /// <summary>Hauteur de la surface (là où flottent les slimes).</summary>
+    public float SurfaceY { get { return transform.position.y + size.y * 0.5f - 0.15f; } }
+
+    // Les créatures qui tombent dans l'acide : les slimes flottent (l'acide est leur élément), les moustiques sont dissous.
+    void OnTriggerStay2D(Collider2D other)
+    {
+        if (harmless || other.attachedRigidbody == null) return;
+        if (AcidImmunity.Has && other.CompareTag("Player"))
+        {
+            PlayerMovement pmv = other.GetComponentInParent<PlayerMovement>();
+            if (pmv != null) AcidSwim.Touch(pmv, SurfaceY);
+            return;
+        }
+        Slime sl = other.attachedRigidbody.GetComponent<Slime>();
+        if (sl != null) { sl.FloatInAcid(SurfaceY); return; }
+        FlyingMinion fm = other.attachedRigidbody.GetComponent<FlyingMinion>();
+        if (fm != null && fm.IsAlive && !fm.IsPulled)
+        {
+            AudioManager.Play("acide", 0.5f, Random.Range(1.1f, 1.4f));
+            Splash(new Vector3(fm.transform.position.x, SurfaceY, 0f));
+            fm.DieInAcid();
+        }
+    }
+
     void OnTriggerEnter2D(Collider2D other)
     {
         if (harmless || !other.CompareTag("Player")) return;
+        if (AcidImmunity.Has) { Splash(other.transform.position); return; } // l'acide ne brûle plus le héros
         PlayerHealth health = other.GetComponentInParent<PlayerHealth>();
         if (health == null) return;
         AudioManager.Play("acide", 0.8f, Random.Range(0.9f, 1.1f));

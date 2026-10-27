@@ -120,7 +120,7 @@ public class MainMenu : MonoBehaviour
         settingsPanel = UIFactory.Rect("Paramètres", root);
         UIFactory.Stretch(settingsPanel, 0);
         settingsGroup = settingsPanel.gameObject.AddComponent<CanvasGroup>();
-        Image box = UIFactory.Box("Cadre", settingsPanel, new Vector2(0, -260), new Vector2(1000, 520), new Color(0.03f, 0.03f, 0.07f, 0.92f));
+        Image box = UIFactory.Box("Cadre", settingsPanel, new Vector2(0, -270), new Vector2(1000, 540), new Color(0.03f, 0.03f, 0.07f, 0.92f));
         Outline ol = box.gameObject.AddComponent<Outline>();
         ol.effectColor = new Color(0.56f, 0.94f, 1f, 0.5f);
         ol.effectDistance = new Vector2(3, 3);
@@ -129,9 +129,9 @@ public class MainMenu : MonoBehaviour
         st.rectTransform.sizeDelta = new Vector2(800, 80);
         st.fontStyle = FontStyle.Bold;
         st.text = "PARAMÈTRES";
-        sliders.Build(settingsPanel, font, -200f);
+        sliders.Build(settingsPanel, font, -180f);
         Text back = UIFactory.Label("Retour", settingsPanel, font, 36, Color.white, TextAnchor.MiddleCenter);
-        back.rectTransform.anchoredPosition = new Vector2(0, -450);
+        back.rectTransform.anchoredPosition = new Vector2(0, -470);
         back.rectTransform.sizeDelta = new Vector2(800, 60);
         back.text = "Z / S : choisir     Q / D : régler     Échap : retour";
         back.fontSize = 28;

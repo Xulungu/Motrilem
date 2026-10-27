@@ -60,7 +60,7 @@ public class AcidSplash : MonoBehaviour
 
     void OnTriggerStay2D(Collider2D other)
     {
-        if (damage <= 0 || !other.CompareTag("Player")) return;
+        if (damage <= 0 || !other.CompareTag("Player") || AcidImmunity.Has) return;
         PlayerHealth ph = other.GetComponentInParent<PlayerHealth>();
         if (ph == null || !ph.CanTakeDamage) return;
         ph.TakeDamage(damage);

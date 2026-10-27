@@ -1,5 +1,6 @@
 using System.Collections;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 public class PlayerHealth : MonoBehaviour
 {
@@ -25,6 +26,9 @@ public class PlayerHealth : MonoBehaviour
     public bool safeGroundRespawn;
     private Vector3 safePos;
     private bool hasSafe;
+    /// <summary>Salle à vagues / arène en cours : une chute dans l'acide y ramène le joueur (à l'intérieur de la barrière), pas dehors.</summary>
+    [HideInInspector] public bool hasRoomSafe;
+    [HideInInspector] public Vector3 roomSafe;
     private float groundedTime;
 
     private bool isInvincible;
@@ -94,6 +98,16 @@ public class PlayerHealth : MonoBehaviour
     public void SetSpawnPoint(Vector3 position)
     {
         spawnPosition = position;
+        // Une statue est aussi le point de retour après une mort, même si on est sur une autre carte
+        SaveSystem.SetCheckpoint(SceneManager.GetActiveScene().name, new Vector2(position.x, position.y));
+    }
+
+    /// <summary>Arrivée par un passage entre deux cartes : on réapparaîtra sur ce sol sûr (jamais au-dessus de l'acide).</summary>
+    public void SetArrivalGround(Vector3 safe)
+    {
+        spawnPosition = safe;
+        safePos = safe;
+        hasSafe = true;
     }
 
     /// <summary>Chute dans le vide : perte de vie puis retour au dernier checkpoint.</summary>
@@ -104,7 +118,7 @@ public class PlayerHealth : MonoBehaviour
         CurrentHealth = Mathf.Max(CurrentHealth - Mathf.Max(0, damage), 0);
         healthBar.SetHealth(CurrentHealth);
         if (CurrentHealth == 0) StartCoroutine(Die());
-        else StartCoroutine(RespawnAfterFall(safeGroundRespawn && hasSafe ? safePos : spawnPosition));
+        else StartCoroutine(RespawnAfterFall(hasRoomSafe ? roomSafe : (safeGroundRespawn && hasSafe ? safePos : spawnPosition)));
     }
 
     IEnumerator RespawnAfterFall(Vector3 target)
@@ -167,10 +181,24 @@ public class PlayerHealth : MonoBehaviour
         PlayerProfile.Record(PlayerProfile.Event.Death);
         isDead = true;
         if (movement != null) movement.controlsEnabled = false;
-        if (graphics != null) graphics.color = new Color(1f, 0.4f, 0.4f, 1f);
 
-        yield return new WaitForSeconds(respawnDelay * 0.6f);
-        yield return GameUI.Instance.FadeTo(Color.black, respawnDelay * 0.4f);
+        // animation de mort, fondu sur noir, puis écran « Vous êtes mort »
+        yield return DeathScreen.Play(this, graphics, rb);
+        if (DeathScreen.ChoseMenu)
+        {
+            Time.timeScale = 1f;
+            SceneManager.LoadScene(PauseMenu.MenuSceneName);
+            yield break;
+        }
+
+        // Dernière statue sur une autre carte : on charge cette carte et on y réapparaît (comme un banc de Hollow Knight)
+        string cp = SaveSystem.CheckpointScene;
+        if (!string.IsNullOrEmpty(cp) && cp != SceneManager.GetActiveScene().name && Application.CanStreamedLevelBeLoaded(cp))
+        {
+            SaveSystem.SetReturnSpawn(cp, SaveSystem.CheckpointPos, maxHealth);
+            SceneManager.LoadScene(cp);
+            yield break;
+        }
 
         transform.position = spawnPosition;
         if (rb != null) rb.velocity = Vector2.zero;

@@ -8,6 +8,9 @@ public class EnemyDamage : MonoBehaviour
     [Tooltip("Vitesse du recul appliqué au joueur (x = horizontal, y = vertical)")]
     public Vector2 knockback = new Vector2(4f, 4f);
     public float knockbackDuration = 0.25f;
+    [Tooltip("Ralentissement du joueur au contact (1 = aucun) et sa durée en secondes")]
+    public float slowFactor = 1f;
+    public float slowDuration = 0f;
 
     private Collider2D bodyCollider;
     private Collider2D weakSpotCollider;
@@ -31,7 +34,7 @@ public class EnemyDamage : MonoBehaviour
         if (!bodyCollider.IsTouching(collision)) return;
 
         PlayerHealth health = collision.GetComponentInParent<PlayerHealth>();
-        if (health == null || !health.CanTakeDamage) return;
+        if (health == null) return;
 
         // Juste après un écrasement, le joueur remonte : l'ennemi ne le blesse pas
         if (weakSpot != null && weakSpot.RecentlyStomped) return;
@@ -43,6 +46,14 @@ public class EnemyDamage : MonoBehaviour
         {
             return;
         }
+
+        // Le gluant colle aux pieds : le ralentissement s'applique à chaque contact, même sans dégâts
+        if (slowDuration > 0f)
+        {
+            PlayerMovement slowed = collision.GetComponentInParent<PlayerMovement>();
+            if (slowed != null) slowed.ApplySlow(slowFactor, slowDuration);
+        }
+        if (!health.CanTakeDamage) return;
 
         health.TakeDamage(damage);
 
